@@ -1,0 +1,25 @@
+{
+  "name": "polybot",
+  "version": "1.0.0",
+  "description": "",
+  "main": "polybot.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MrEleffant/polybot.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/MrEleffant/polybot/issues"
+  },
+  "homepage": "https://github.com/MrEleffant/polybot#readme",
+  "dependencies": {
+    "discord.js": "^14.3.0",
+    "dotenv": "^16.0.2",
+    "nodemon": "^2.0.19"
+  }
+}
