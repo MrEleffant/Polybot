@@ -1,4 +1,5 @@
 require('dotenv').config()
+const cron = require('cron');
 const fs = require("fs");
 const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 
@@ -13,14 +14,18 @@ const client = new Client({
 
 let guild, groupeChannel
 const config = require("./config/config.json")
+const carnet = require("./dat/carnet.json")
 
 client.login(process.env.TOKEN);
 
 client.on("ready", async () => {
     guild = await client.guilds.fetch(config.guild)
     groupeChannel = await client.channels.fetch(config.channels.groupes)
-
     console.log("Polybot ready")
+    // cron eveery minute on sunday 
+    let carnetJob = new cron.CronJob('0 0 * * 1', envoiCarnetdeSuivis);
+    carnetJob.start();
+
     client.user.setPresence({ activities: [{ name: 'polycraft' }] });
     setInterval(() => {
         client.user.setPresence({ activities: [{ name: 'polycraft' }] });
@@ -101,29 +106,81 @@ client.on("interactionCreate", async (interaction) => {
                 const nom = interaction.fields.fields.get("nom").value
 
                 interaction.member.setNickname(`${prenom} - ${nom}`)
-                
+
                 switch (arg) {
                     case "1": {
                         await interaction.member.roles.remove(config.groupes.roles[1])
                         await interaction.member.roles.add(config.groupes.roles[0])
                         break;
                     }
-    
+
                     case "2": {
                         await interaction.member.roles.remove(config.groupes.roles[0])
                         await interaction.member.roles.add(config.groupes.roles[1])
                         break;
                     }
-    
+
                     default: {
                         break;
                     }
                 }
-    
+
                 break
             } catch (error) {
                 console.log(error)
             }
+        }
+
+        case "sendFormCarnet": {
+            try {
+                // récupération du message 
+                // const message = await interaction.channel.messages.fetch(carnet.messages[arg])
+                // message.edit({content: "test"});
+                // show modal to fill carnet
+                const modal = new ModalBuilder()
+                    .setCustomId('fillCarnet_' + arg)
+                    .setTitle('Remplis le carnet de suivi');
+
+                const resume = new TextInputBuilder()
+                    .setCustomId('resume')
+                    .setLabel("Résumé de la semaine")
+                    .setStyle(TextInputStyle.Paragraph);
+
+                const resumeRow = new ActionRowBuilder().addComponents(resume);
+                modal.addComponents(resumeRow);
+                await interaction.showModal(modal);
+
+            } catch (error) {
+                console.log(error)
+            }
+            break;
+        }
+
+        case "fillCarnet": {
+            try {
+                await interaction.deferUpdate()
+                const resume = interaction.fields.fields.get("resume").value
+                const message = await interaction.channel.messages.fetch(carnet.messages[arg])
+
+                const carnetEmbed = new EmbedBuilder()
+                    .setColor(config.color)
+                    .setTitle(interaction.member.displayName + " a compléter le carnet de suivi")
+                    .setDescription('Carnet de la semaine du ' + arg)
+                    .addFields({ name: "Résumé de la semaine", value: resume })
+                    .setFooter({ text: "Carnet Complété le" })
+                    .setTimestamp()
+                const buttons = new ActionRowBuilder()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('sendFormCarnet_' + arg)
+                            .setEmoji("✏️")
+                            .setStyle(ButtonStyle.Secondary),
+                    );
+                message.edit({ embeds: [carnetEmbed], components: [buttons] });
+            } catch (error) {
+                console.log(error)
+            }
+            break
         }
 
         default: {
@@ -132,3 +189,49 @@ client.on("interactionCreate", async (interaction) => {
         }
     }
 })
+
+
+async function envoiCarnetdeSuivis() {
+    console.log("Carnet de suivis")
+    // récupération de tous les membres de la classe dans les deux groupes
+    const guild = await client.guilds.fetch(config.guild)
+    const carnetChannel = await client.channels.fetch(config.channels.carnet)
+    const classe = (await guild.members.fetch()).filter(mem => mem.roles.cache.has(config.groupes.roles[0]) || mem.roles.cache.has(config.groupes.roles[1]))
+    // check if everyone has done
+    if (carnet.hasDone.length == classe.size) {
+        // Toute la classe a fait le carnet remise a zero
+        console.log("Toute la classe a fait le carnet")
+        carnet.hasDone = []
+        await fs.writeFileSync("./dat/carnet.json", JSON.stringify(carnet, null, 2));
+    }
+
+    // récupération des membres qui n'ont pas fait le carnet
+    const notDone = classe.filter(mem => !carnet.hasDone.includes(mem.id))
+    // peak a random member in the notDone list
+    const randomMember = notDone.random()
+    // add the member to the hasDone list
+    carnet.hasDone.push(randomMember.id)
+    await fs.writeFileSync("./dat/carnet.json", JSON.stringify(carnet, null, 2));
+
+    // get date 
+    const date = new Date()
+    const dateStr = date.getDate() + "/" + (date.getMonth() + 1) + "/" + date.getFullYear()
+
+
+    const carnetEmbed = new EmbedBuilder()
+        .setColor(config.waitingcolor)
+        .setTitle(randomMember.displayName + " doit compléter le carnet de suivi")
+        .setDescription('Carnet de la semaine du ' + dateStr)
+
+    const buttons = new ActionRowBuilder()
+        .addComponents(
+            new ButtonBuilder()
+                .setCustomId('sendFormCarnet_' + dateStr)
+                .setLabel('Ecrire le carnet')
+                .setStyle(ButtonStyle.Success),
+        );
+
+    const message = await carnetChannel.send({ content: `Personne désignée : ${randomMember}`, embeds: [carnetEmbed], components: [buttons] });
+    carnet.messages[dateStr] = await message.id
+    await fs.writeFileSync("./dat/carnet.json", JSON.stringify(carnet, null, 2));
+}
