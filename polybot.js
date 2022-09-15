@@ -61,6 +61,16 @@ client.on("messageCreate", async (message) => {
                 );
             groupeChannel.send({ embeds: [groupeEmbed], components: [buttons] });
         }
+        case "sendclass": {
+            message.delete()
+            if (!message.member.permissions.has('Administrator')) break
+            const carnetChannel = await client.channels.fetch(config.channels.carnet)
+            carnet.class.forEach(mem => {
+                carnetChannel.send(mem)
+            })
+
+            break;
+        }
         default: {
             console.log(command)
             break;
@@ -91,10 +101,8 @@ client.on("interactionCreate", async (interaction) => {
             const prenomRow = new ActionRowBuilder().addComponents(prenom);
             const nomRow = new ActionRowBuilder().addComponents(nom);
 
-            // Add inputs to the modal
             modal.addComponents(prenomRow, nomRow);
 
-            // Show the modal to the user
             await interaction.showModal(modal);
             break;
         }
@@ -131,49 +139,17 @@ client.on("interactionCreate", async (interaction) => {
             }
         }
 
-        case "sendFormCarnet": {
-            try {
-                // show modal to fill carnet
-                const modal = new ModalBuilder()
-                    .setCustomId('fillCarnet_' + arg)
-                    .setTitle('Remplis le carnet de suivi');
 
-                const resume = new TextInputBuilder()
-                    .setCustomId('resume')
-                    .setLabel("Résumé de la semaine")
-                    .setStyle(TextInputStyle.Paragraph);
-
-                const resumeRow = new ActionRowBuilder().addComponents(resume);
-                modal.addComponents(resumeRow);
-                await interaction.showModal(modal);
-
-            } catch (error) {
-                console.log(error)
-            }
-            break;
-        }
-
-        case "fillCarnet": {
+        case "markCarnetDone": {
             try {
                 await interaction.deferUpdate()
-                const resume = interaction.fields.fields.get("resume").value
-                const message = await interaction.channel.messages.fetch(carnet.messages[arg])
-
                 const carnetEmbed = new EmbedBuilder()
                     .setColor(config.color)
-                    .setTitle(interaction.member.displayName + " a compléter le carnet de suivi")
-                    .setDescription('Carnet de la semaine du ' + arg)
-                    .addFields({ name: "Résumé de la semaine", value: resume })
+                    .setDescription(`${interaction.member} a complété le carnet de suivi`)
+                    .addFields({ name: "Carnet de la semaine du ", value: arg })
                     .setFooter({ text: "Carnet Complété le" })
                     .setTimestamp()
-                const buttons = new ActionRowBuilder()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('sendFormCarnet_' + arg)
-                            .setEmoji("✏️")
-                            .setStyle(ButtonStyle.Secondary),
-                    );
-                message.edit({ embeds: [carnetEmbed], components: [buttons] });
+                interaction.message.edit({ embeds: [carnetEmbed], components: [] });
             } catch (error) {
                 console.log(error)
             }
@@ -193,9 +169,9 @@ async function envoiCarnetdeSuivis() {
     // récupération de tous les membres de la classe dans les deux groupes
     const guild = await client.guilds.fetch(config.guild)
     const carnetChannel = await client.channels.fetch(config.channels.carnet)
-    const classe = (await guild.members.fetch()).filter(mem => mem.roles.cache.has(config.groupes.roles[0]) || mem.roles.cache.has(config.groupes.roles[1]))
+    const classe = carnet.class
     // check if everyone has done
-    if (carnet.hasDone.length == classe.size) {
+    if (carnet.hasDone.length == carnet.class.length) {
         // Toute la classe a fait le carnet remise a zero
         console.log("Toute la classe a fait le carnet")
         carnet.hasDone = []
@@ -203,32 +179,29 @@ async function envoiCarnetdeSuivis() {
     }
 
     // récupération des membres qui n'ont pas fait le carnet
-    const notDone = classe.filter(mem => !carnet.hasDone.includes(mem.id))
+    const notDone = classe.filter(mem => !carnet.hasDone.includes(mem))
     // peak a random member in the notDone list
-    const randomMember = notDone.random()
+    const eleve = notDone[0]
     // add the member to the hasDone list
-    carnet.hasDone.push(randomMember.id)
+    carnet.hasDone.push(eleve)
     await fs.writeFileSync("./dat/carnet.json", JSON.stringify(carnet, null, 2));
 
     // get date 
     const date = new Date()
     const dateStr = date.getDate() + "/" + (date.getMonth() + 1) + "/" + date.getFullYear()
 
-
     const carnetEmbed = new EmbedBuilder()
         .setColor(config.waitingcolor)
-        .setTitle(randomMember.displayName + " doit compléter le carnet de suivi")
-        .setDescription('Carnet de la semaine du ' + dateStr)
+        .setDescription(eleve + " doit compléter le carnet de suivi")
+        .addFields({ name: "Carnet de la semaine du ", value: dateStr })
 
     const buttons = new ActionRowBuilder()
         .addComponents(
             new ButtonBuilder()
-                .setCustomId('sendFormCarnet_' + dateStr)
-                .setLabel('Ecrire le carnet')
+                .setCustomId('markCarnetDone_' + dateStr)
+                .setLabel('Marquer comme fait')
+                .setEmoji("✅")
                 .setStyle(ButtonStyle.Success),
         );
-
-    const message = await carnetChannel.send({ content: `Personne désignée : ${randomMember}`, embeds: [carnetEmbed], components: [buttons] });
-    carnet.messages[dateStr] = await message.id
-    await fs.writeFileSync("./dat/carnet.json", JSON.stringify(carnet, null, 2));
+    carnetChannel.send({ content: `Personne désignée : ${eleve}`, embeds: [carnetEmbed], components: [buttons] });
 }
