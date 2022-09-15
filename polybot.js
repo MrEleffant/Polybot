@@ -23,7 +23,7 @@ client.on("ready", async () => {
     groupeChannel = await client.channels.fetch(config.channels.groupes)
     console.log("Polybot ready")
     // cron eveery minute on sunday 
-    let carnetJob = new cron.CronJob('0 0 * * 1', envoiCarnetdeSuivis);
+    let carnetJob = new cron.CronJob('0 12 * * 1', envoiCarnetdeSuivis);
     carnetJob.start();
 
     client.user.setPresence({ activities: [{ name: 'polycraft' }] });
@@ -133,9 +133,6 @@ client.on("interactionCreate", async (interaction) => {
 
         case "sendFormCarnet": {
             try {
-                // récupération du message 
-                // const message = await interaction.channel.messages.fetch(carnet.messages[arg])
-                // message.edit({content: "test"});
                 // show modal to fill carnet
                 const modal = new ModalBuilder()
                     .setCustomId('fillCarnet_' + arg)
