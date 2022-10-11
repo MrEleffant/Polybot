@@ -71,6 +71,11 @@ client.on("messageCreate", async (message) => {
 
             break;
         }
+        case "carnet": {
+            if (!message.member.permissions.has("Administrator")) break;
+            envoiCarnetdeSuivis()
+            break;
+        }
         default: {
             console.log(command)
             break;
@@ -189,6 +194,7 @@ async function envoiCarnetdeSuivis() {
     // get date 
     const date = new Date()
     const dateStr = date.getDate() + "/" + (date.getMonth() + 1) + "/" + date.getFullYear()
+    // const dateStr = "10/10/2022"
 
     const carnetEmbed = new EmbedBuilder()
         .setColor(config.waitingcolor)
