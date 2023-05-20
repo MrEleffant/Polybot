@@ -2,12 +2,12 @@
 
 # Polybot
  
-Bienvenu à Poytech !
-Ce readme a pour objectif de te guider dans la mise en place de ton discord de classe pour ces 3 prochaines années.
-Vous êtes bien sur libre de faire votre groupe de classe comme vous le souhaitez. Nous souhaitons simplement partager ce qui a fonctionné pour notre promotion.
+Bienvenue à Poytech !
+Ce readme a pour objectif de te guider dans la mise en place de ton discord de classe pour ces 3 prochaines années.
+Vous êtes bien sûr libre de faire votre groupe de classe comme vous le souhaitez. Nous souhaitons simplement partager ce qui a fonctionné pour notre promotion.
 
 Il est important de noter qu'il faudra héberger ce bot, libre à vous de choisir votre hébergeur.
-Pour notre part ce sera sur une raspberry pi.
+Pour notre part ce sera une raspberry pi.
 
 La mise en place du bot peut te prendre un peu de temps, mais c'est un gain de temps pour le reste de l'année...
 
@@ -16,18 +16,20 @@ En terme de difficulté, il n'y a rien d'inabordable pour quelqu'un qui souhaite
 Ce bot sera opérationnel pour la rentrée scolaire 2023-2024.
 *Il est possible que des changements soient nécessaires suite à l'évolution de Discord.js.*
 
-**Prêt ? Aller c'est parti !**
+**Prêt ? Allez c'est parti !**
 
 Ce guide sera décomposé en plusieurs parties :
 - [Préparation de l'environnement](#Préparation)
     - [Clonnage du discord](#Clonnage-du-discord)
     - [Création du bot](#Création-du-bot)
     - [Ajout du bot](#Ajout-du-bot)
-- [Configuration](#configuration)
-    - [Installation](#installation)
-    - [Configuration du bot](#configuration-du-bot)
-- [Utilisation](#utilisation)
-- [Commandes](#commandes)
+- [Configuration](#Configuration)
+    - [Configuration du bot](#Configuration-du-bot)
+    - [Installation](#Installation)
+- [Utilisation](#Utilisation)
+    - [Setup](#Setup)
+    - [Commandes](#Commandes)
+
 
 # Préparation
 ## Clonnage du discord
@@ -74,6 +76,12 @@ Il faut maintenant s'assuer que le bot soit en haut de la chaine alimentaire dan
 
 
 # Configuration
+## Configuration du bot
+Maintenant que le bot est correctement installé, il faut le configurer.
+pour ce faire il te faut coller l'id du serveur dans le fichier `.env`
+```bash	
+GUILD=XXXXXXXXXXXXXXXXXXXXXX
+```
 ## Installation
 Il vous faudra installer [Node.js](https://nodejs.org/en/) sur votre machine.
 
@@ -105,13 +113,18 @@ npm install pm2 -g
 ```bash
 pm2 start polybot.js --name polybot
 ```
-## Configuration du bot
-Maintenant que le bot est correctement installé, il faut le configurer.
-pour ce faire il te faut coller l'id du serveur dans le fichier `.env`
+# Utilisation
+## Setup
+Pour configurer le bot, il faut utiliser la commande `/setup`.
+Il va mettre en place tout le serveur, poster les messages ect...
+## Commandes
+> **/setup** : Permet de configurer le serveur *Accessible seulement aux Administrateurs*
 
+> **/carnet** : Permet de créer un carnet de bord *Accessible seulement aux Délégués*><br>Elle peut prendre deux arguments: `trigger` ou `toggle`<br>
+> **trigger** : Permet de forcer l'envoie de la notification pour compléter le carnet de suivis<br>Un arguments facultatif permet de définir la date mise dans la notification<br>
+> **toggle** : Permet d'activer ou de désactiver l'envoie automatique du carnet de suivis  pour les periodes en entreprise
 
-
-
+Discord t'aidera de tooute façon avec l'autocomplétion des commandes.
 
 # Autres liens utiles
 - [Discord.js](https://discord.js.org/#/)
