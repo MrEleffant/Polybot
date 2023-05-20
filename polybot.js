@@ -59,7 +59,7 @@ client.on("ready", async () => {
             )
     }
     for (const [key, value] of Object.entries(commands)) {
-        await guild.commands.create(value)
+        await client.application.commands.create(value)
     }
 })
 
@@ -92,7 +92,7 @@ client.on("interactionCreate", async (interaction) => {
                 const groupeEmbed = new EmbedBuilder()
                     .setColor(config.colors.color)
                     .setTitle('Choisi ton groupe de classe')
-                    .setDescription('Bienvenue à toi jeune alternant !\nVos groupes on été déterminés à la suite de votre score au TOEIC, attends ton résultat pour rejoindre.')
+                    .setDescription('Bienvenue à toi jeune alternant !\nVos groupes ont été déterminés à la suite de votre score au TOEIC, attends ton résultat pour rejoindre.')
                     .setThumbnail(client.user.displayAvatarURL())
                 const buttons = new ActionRowBuilder()
                     .addComponents(
