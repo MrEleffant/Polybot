@@ -1,204 +1,336 @@
 require('dotenv').config()
-const cron = require('cron');
-const fs = require("fs");
-const { Client, GatewayIntentBits, Partials, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const cron = require('cron')
+const fs = require("fs")
+const { Client, GatewayIntentBits, SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js')
 
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.GuildIntegrations,
         GatewayIntentBits.GuildMembers,
-    ], partials: [Partials.Channel]
-});
-
-let guild, groupeChannel
-const config = require("./config/config.json")
-const carnet = require("./dat/carnet.json")
-
-client.login(process.env.TOKEN);
-
-client.on("ready", async () => {
-    guild = await client.guilds.fetch(config.guild)
-    groupeChannel = await client.channels.fetch(config.channels.groupes)
-    console.log("Polybot ready")
-    // cron eveery minute on sunday 
-    let carnetJob = new cron.CronJob('0 12 * * 1', envoiCarnetdeSuivis);
-    carnetJob.start();
-
-    client.user.setPresence({ activities: [{ name: 'polycraft' }] });
-    setInterval(() => {
-        client.user.setPresence({ activities: [{ name: 'polycraft' }] });
-    }, 60000 * 5);
+    ]
 })
 
-client.on("messageCreate", async (message) => {
-    if (message.author.bot) return;
-    if (message.channel.type === "dm") return;
-    const args = message.content.substring(config.prefix.length).trim().split(" ");
-    const command = args.shift().toLowerCase();
-    if (!message.content.startsWith(config.prefix)) return;
-    switch (command) {
-        case "setupgroupes": {
-            message.delete()
-            if (!message.member.permissions.has('Administrator')) break
-            const groupeEmbed = new EmbedBuilder()
-                .setColor(config.color)
-                .setTitle('Choisi ton groupe de classe')
-                .setThumbnail(client.user.displayAvatarURL())
-            const buttons = new ActionRowBuilder()
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('joingroupe_1')
-                        .setLabel('Groupe 1')
-                        .setStyle(ButtonStyle.Primary),
-                )
-                .addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('joingroupe_2')
-                        .setLabel('Groupe 2')
-                        .setStyle(ButtonStyle.Primary),
-                );
-            groupeChannel.send({ embeds: [groupeEmbed], components: [buttons] });
-        }
-        case "sendclass": {
-            message.delete()
-            if (!message.member.permissions.has('Administrator')) break
-            const carnetChannel = await client.channels.fetch(config.channels.carnet)
-            carnet.class.forEach(mem => {
-                carnetChannel.send(mem)
-            })
+const config = require("./config/config.json")
+const classe = require("./dat/classe.json")
+const carnet = require("./dat/carnet.json")
+let hasDoneCarnet = require("./dat/hasDoneCarnet.json")
+let guild
 
-            break;
-        }
-        case "carnet": {
-            if (!message.member.permissions.has("Administrator")) break;
-            envoiCarnetdeSuivis()
-            break;
-        }
-        default: {
-            console.log(command)
-            break;
-        }
+
+client.login(process.env.TOKEN)
+
+client.on("ready", async () => {
+
+    guild = await client.guilds.fetch(process.env.GUILD)
+    console.log("Polybot ready")
+
+    let carnetJob = new cron.CronJob('0 12 * * 1', envoiCarnetdeSuivis)
+    carnetJob.start()
+
+    client.user.setPresence({ activities: [{ name: 'polycraft' }] })
+    setInterval(() => {
+        client.user.setPresence({ activities: [{ name: 'polycraft' }] })
+    }, 60000 * 5)
+
+    // register all the commands
+
+    // créer une commande carnet qui pourr prendre l'argument toggle et trigger
+
+    const commands = {
+        "setup": new SlashCommandBuilder().setName("setup").setDescription("Mise en place du bot"),
+        "carnet": new SlashCommandBuilder().setName("carnet")
+            .setDescription("Commandes du carnet de suivis")
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName("trigger")
+                    .setDescription("Envoyer la notif de carnet de suivis")
+                    .addStringOption(option =>
+                        option
+                            .setName('date')
+                            .setDescription('Choisir une date dd/mm/yyyy')
+                            .setRequired(false)
+                    )
+            )
+            .addSubcommand(subcommand =>
+                subcommand
+                    .setName("toggle")
+                    .setDescription("Activer ou désactiver l'envoi automatique de la notif de carnet de suivis")
+            )
+    }
+    for (const [key, value] of Object.entries(commands)) {
+        await guild.commands.create(value)
     }
 })
 
+
 client.on("interactionCreate", async (interaction) => {
-    const interactionId = interaction.customId.split("_")[0];
-    const arg = interaction.customId.split("_")[1];
+    if (interaction.isCommand()) {
+        switch (interaction.commandName) {
+            case "setup": {
+                if (!interaction.member.permissions.has("ADMINISTRATOR")) break
 
-    switch (interactionId) {
-        case "joingroupe": {
-            const modal = new ModalBuilder()
-                .setCustomId('renameInput_' + arg)
-                .setTitle('Comment te nommes-tu ?');
+                await interaction.reply(":white_check_mark: Setup en cours...")
 
-            const prenom = new TextInputBuilder()
-                .setCustomId('prenom')
-                .setLabel("Prénom")
-                .setStyle(TextInputStyle.Short);
+                const carnetChannel = guild.channels.cache.find(channel => channel.name === "carnet-de-suivis")
 
-            const nom = new TextInputBuilder()
-                .setCustomId('nom')
-                .setLabel("Nom")
-                .setStyle(TextInputStyle.Short);
+                const CarnetdeSuivisEmbed = new EmbedBuilder()
+                    .setColor(config.colors.color)
+                    .setTitle('Choisi ton groupe de classe')
+                    .setDescription(`Bienvenue dans le carnet de suivi !\nIci chaque lundi à 12h, la personne responsable du carnet de suivis sera ping ! :) \nUne fois le carnet complété, il suffira de cliquer sur le bouton "Marquer comme fait"
+                    Un des délégués sera chargé d'activer ou non la fonctionnalité si vous êtes en entreprise ou non...
+                    `)
+                    .setThumbnail(client.user.displayAvatarURL())
 
-            const prenomRow = new ActionRowBuilder().addComponents(prenom);
-            const nomRow = new ActionRowBuilder().addComponents(nom);
 
-            modal.addComponents(prenomRow, nomRow);
+                carnetChannel.send({ embeds: [CarnetdeSuivisEmbed] }).then(message => {
+                    message.pin()
+                })
 
-            await interaction.showModal(modal);
-            break;
-        }
+                const groupesChannel = guild.channels.cache.find(channel => channel.name === "rejoindre")
 
-        case "renameInput": {
-            try {
-                await interaction.deferUpdate()
-                const prenom = interaction.fields.fields.get("prenom").value
-                const nom = interaction.fields.fields.get("nom").value
+                const groupeEmbed = new EmbedBuilder()
+                    .setColor(config.colors.color)
+                    .setTitle('Choisi ton groupe de classe')
+                    .setDescription('Bienvenue à toi jeune alternant !\nVos groupes on été déterminés à la suite de votre score au TOEIC, attends ton résultat pour rejoindre.')
+                    .setThumbnail(client.user.displayAvatarURL())
+                const buttons = new ActionRowBuilder()
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('ModalJoindGroup_1')
+                            .setLabel('Groupe 1')
+                            .setStyle(ButtonStyle.Primary),
+                    )
+                    .addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('ModalJoindGroup_2')
+                            .setLabel('Groupe 2')
+                            .setStyle(ButtonStyle.Primary),
+                    )
 
-                interaction.member.setNickname(`${prenom} - ${nom}`)
+                groupesChannel.send({ embeds: [groupeEmbed], components: [buttons] })
 
-                switch (arg) {
-                    case "1": {
-                        await interaction.member.roles.remove(config.groupes.roles[1])
-                        await interaction.member.roles.add(config.groupes.roles[0])
-                        break;
+
+                config.channels.carnet = carnetChannel.id
+                config.channels.groupes = groupesChannel.id
+
+
+                // find the two groups roles 
+                const delegue = guild.roles.cache.filter(role => role.name.includes("Délégué"))
+                const groupes1 = guild.roles.cache.filter(role => role.name.includes("Groupe 1"))
+                const groupes2 = guild.roles.cache.filter(role => role.name.includes("Groupe 2"))
+
+
+                config.roles.delegue = delegue.map(role => role.id)[0]
+                config.roles.gp1 = groupes1.map(role => role.id)[0]
+                config.roles.gp2 = groupes2.map(role => role.id)[0]
+
+                fs.writeFile("./config/config.json", JSON.stringify(config, null, 2), (err) => {
+                    if (err) console.log(err)
+                }
+                )
+                break
+            }
+
+            case "carnet": {
+                if (!interaction.member.roles.cache.has(config.roles.delegue)) break
+                switch (interaction.options.getSubcommand("commande")) {
+                    case "trigger": {
+                        await interaction.reply(":white_check_mark: Carnet de suivis envoyé !")
+                        envoiCarnetdeSuivis(interaction.options.getString("date") ?? null, true)
+                        break
                     }
+                    case "toggle": {
+                        if (carnet.toggle) {
+                            carnet.toggle = false
+                            await interaction.reply(":white_check_mark: Carnet de suivis désactivé !")
+                        } else {
+                            carnet.toggle = true
+                            await interaction.reply(":white_check_mark: Carnet de suivis activé !")
+                        }
 
-                    case "2": {
-                        await interaction.member.roles.remove(config.groupes.roles[0])
-                        await interaction.member.roles.add(config.groupes.roles[1])
-                        break;
+
+                        break
                     }
 
                     default: {
-                        break;
+                        console.log("Commande inconnue " + interaction.commandName)
+                        break
                     }
                 }
-
                 break
-            } catch (error) {
-                console.log(error)
+            }
+
+            default: {
+                console.log("Commande inconnue " + interaction.commandName)
+                break
             }
         }
 
+        return
+    } else if (interaction.isButton()) {
+        const interactionId = interaction.customId.split("_")[0]
+        const arg = interaction.customId.split("_")[1]
 
-        case "markCarnetDone": {
-            try {
+        switch (interactionId) {
+            case "ModalJoindGroup": {
+                const modal = new ModalBuilder()
+                    .setCustomId('JoinGroupInput_' + arg)
+                    .setTitle('Comment te nommes-tu ?')
+
+                const prenom = new TextInputBuilder()
+                    .setCustomId('prenom')
+                    .setLabel("Prénom")
+                    .setStyle(TextInputStyle.Short)
+
+                const nom = new TextInputBuilder()
+                    .setCustomId('nom')
+                    .setLabel("Nom")
+                    .setStyle(TextInputStyle.Short)
+
+                const prenomRow = new ActionRowBuilder().addComponents(prenom)
+                const nomRow = new ActionRowBuilder().addComponents(nom)
+
+                modal.addComponents(prenomRow, nomRow)
+
+                await interaction.showModal(modal)
+                break
+            }
+
+            case "markCarnetDone": {
+                try {
+                    await interaction.deferUpdate()
+                    const carnetEmbed = new EmbedBuilder()
+                        .setColor(config.colors.color)
+                        .setDescription(`${interaction.member} a complété le carnet de suivi`)
+                        .addFields({ name: "Carnet de la semaine du ", value: arg })
+                        .setFooter({ text: "Carnet Complété le" })
+                        .setTimestamp()
+                    interaction.message.edit({ embeds: [carnetEmbed], components: [] });
+                } catch (error) {
+                    console.log(error)
+                }
+                break
+            }
+
+        }
+    } else if (interaction.isModalSubmit()) {
+        const interactionId = interaction.customId.split("_")[0]
+        const arg = interaction.customId.split("_")[1]
+
+        switch (interactionId) {
+            case "JoinGroupInput": {
                 await interaction.deferUpdate()
-                const carnetEmbed = new EmbedBuilder()
-                    .setColor(config.color)
-                    .setDescription(`${interaction.member} a complété le carnet de suivi`)
-                    .addFields({ name: "Carnet de la semaine du ", value: arg })
-                    .setFooter({ text: "Carnet Complété le" })
-                    .setTimestamp()
-                interaction.message.edit({ embeds: [carnetEmbed], components: [] });
-            } catch (error) {
-                console.log(error)
+
+                const prenom = interaction.fields.fields.get("prenom").value
+                const nom = interaction.fields.fields.get("nom").value
+
+                const eleve = {
+                    id: interaction.member.id,
+                    prenom: prenom,
+                    nom: nom,
+                    groupe: arg
+                }
+
+                classe.push(eleve)
+
+                fs.writeFile("./dat/classe.json", JSON.stringify(classe, null, 2), (err) => {
+                    if (err) console.log(err)
+                })
+
+                try {
+                    await interaction.member.setNickname(`${prenom} - ${nom}`)
+                } catch (error) {
+                    console.log(error)
+                    interaction.member.send("Impossible de changer ton pseudo, merci de le faire manuellement `" + prenom + " - " + nom + "`").catch(err => console.log(err))
+                }
+
+                switch (arg) {
+                    case "1": {
+                        await interaction.member.roles.add(config.roles.gp1)
+                        break
+                    }
+
+                    case "2": {
+                        await interaction.member.roles.add(config.roles.gp2)
+                        break
+                    }
+
+
+                    default: {
+                        break
+                    }
+                }
+                break
             }
-            break
+
+            default: {
+                break
+            }
         }
 
-        default: {
-            console.log("Other interaction id : " + interactionId)
-            break;
-        }
+
+
     }
 })
 
 
-async function envoiCarnetdeSuivis() {
+async function envoiCarnetdeSuivis(dateInput, force) {
     console.log("Carnet de suivis")
+
+    if (!carnet.toggle && !force) return
+
     // récupération de tous les membres de la classe dans les deux groupes
-    const guild = await client.guilds.fetch(config.guild)
-    const carnetChannel = await client.channels.fetch(config.channels.carnet)
-    const classe = carnet.class
-    // check if everyone has done
-    if (carnet.hasDone.length == carnet.class.length) {
+    const carnetChannel = await guild.channels.fetch(config.channels.carnet)
+
+    const listClasse = classe.sort((a, b) => {
+        const prenomA = a.prenom.toLowerCase()
+        const prenomB = b.prenom.toLowerCase()
+        const nomA = a.nom.toLowerCase()
+        const nomB = b.nom.toLowerCase()
+
+        if (prenomA < prenomB) {
+            return -1
+        }
+        if (prenomA > prenomB) {
+            return 1
+        }
+
+        if (nomA < nomB) {
+            return -1
+        }
+        if (nomA > nomB) {
+            return 1
+        }
+
+        return 0
+    }).map(mem => mem.id)
+
+    if (hasDoneCarnet.length >= listClasse.length) {
         // Toute la classe a fait le carnet remise a zero
         console.log("Toute la classe a fait le carnet")
-        carnet.hasDone = []
-        await fs.writeFileSync("./dat/carnet.json", JSON.stringify(carnet, null, 2));
+        hasDoneCarnet = []
+        await fs.writeFileSync("./dat/hasDoneCarnet.json", JSON.stringify("[]", null, 2))
+    }
+    const notDone = listClasse.filter(mem => !hasDoneCarnet.includes(mem))
+    const eleve = notDone[0]
+
+    hasDoneCarnet.push(eleve)
+    await fs.writeFileSync("./dat/hasDoneCarnet.json", JSON.stringify(hasDoneCarnet, null, 2))
+
+    let dateStr
+    if (!dateInput) {
+        // get date 
+        const date = new Date()
+        dateStr = date.getDate() + "/" + (date.getMonth() + 1) + "/" + date.getFullYear()
+        // const dateStr = "10/10/2022"
+    } else {
+        dateStr = dateInput
     }
 
-    // récupération des membres qui n'ont pas fait le carnet
-    const notDone = classe.filter(mem => !carnet.hasDone.includes(mem))
-    // peak a random member in the notDone list
-    const eleve = notDone[0]
-    // add the member to the hasDone list
-    carnet.hasDone.push(eleve)
-    await fs.writeFileSync("./dat/carnet.json", JSON.stringify(carnet, null, 2));
-
-    // get date 
-    const date = new Date()
-    const dateStr = date.getDate() + "/" + (date.getMonth() + 1) + "/" + date.getFullYear()
-    // const dateStr = "10/10/2022"
-
     const carnetEmbed = new EmbedBuilder()
-        .setColor(config.waitingcolor)
-        .setDescription(eleve + " doit compléter le carnet de suivi")
+        .setColor(config.colors.waitingcolor)
+        .setDescription(`<@${eleve}> doit compléter le carnet de suivi`)
         .addFields({ name: "Carnet de la semaine du ", value: dateStr })
 
     const buttons = new ActionRowBuilder()
@@ -208,6 +340,6 @@ async function envoiCarnetdeSuivis() {
                 .setLabel('Marquer comme fait')
                 .setEmoji("✅")
                 .setStyle(ButtonStyle.Success),
-        );
-    carnetChannel.send({ content: `Personne désignée : ${eleve}`, embeds: [carnetEmbed], components: [buttons] });
+        )
+    carnetChannel.send({ content: `Personne désignée : <@${eleve}>`, embeds: [carnetEmbed], components: [buttons] })
 }

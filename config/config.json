@@ -1,16 +1,16 @@
 {
-    "guild": "1018254599569801327",
+  "prefix": "?",
+  "colors": {
     "color": "#00a5dd",
-    "waitingcolor": "#8a9ba7",
-    "channels": {
-        "carnet" : "1018435656462114896",
-        "groupes": "1018259427964497973"
-    },
-    "prefix": "?",
-    "groupes": {
-        "roles": [
-            "1018259259709993152",
-            "1018259336302182482"
-        ]
-    }
+    "waitingcolor": "#8a9ba7"
+  },
+  "channels": {
+    "carnet": "",
+    "groupes": ""
+  },
+  "roles": {
+    "delegue": "",
+    "gp1": "",
+    "gp2": ""
+  }
 }
