@@ -124,7 +124,7 @@ Il va mettre en place tout le serveur, poster les messages ect...
 > **trigger** : Permet de forcer l'envoie de la notification pour compléter le carnet de suivis<br>Un arguments facultatif permet de définir la date mise dans la notification<br>
 > **toggle** : Permet d'activer ou de désactiver l'envoie automatique du carnet de suivis  pour les periodes en entreprise
 
-Discord t'aidera de tooute façon avec l'autocomplétion des commandes.
+Discord t'aidera de toute façon avec l'autocomplétion des commandes.
 
 # Autres liens utiles
 - [Discord.js](https://discord.js.org/#/)
