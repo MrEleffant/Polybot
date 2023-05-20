@@ -24,6 +24,8 @@ Ce guide sera décomposé en plusieurs parties :
     - [Création du bot](#Création-du-bot)
     - [Ajout du bot](#Ajout-du-bot)
 - [Configuration](#configuration)
+    - [Installation](#installation)
+    - [Configuration du bot](#configuration-du-bot)
 - [Utilisation](#utilisation)
 - [Commandes](#commandes)
 
@@ -103,7 +105,9 @@ npm install pm2 -g
 ```bash
 pm2 start polybot.js --name polybot
 ```
-
+## Configuration du bot
+Maintenant que le bot est correctement installé, il faut le configurer.
+pour ce faire il te faut coller l'id du serveur dans le fichier `.env`
 
 
 
