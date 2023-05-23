@@ -284,22 +284,22 @@ async function envoiCarnetdeSuivis(dateInput, force) {
     const carnetChannel = await guild.channels.fetch(config.channels.carnet)
 
     const listClasse = classe.sort((a, b) => {
-        const prenomA = a.prenom.toLowerCase()
-        const prenomB = b.prenom.toLowerCase()
         const nomA = a.nom.toLowerCase()
         const nomB = b.nom.toLowerCase()
+        const prenomA = a.prenom.toLowerCase()
+        const prenomB = b.prenom.toLowerCase()
+        
+        if (nomA < nomB) {
+            return -1
+        }
+        if (nomA > nomB) {
+            return 1
+        }
 
         if (prenomA < prenomB) {
             return -1
         }
         if (prenomA > prenomB) {
-            return 1
-        }
-
-        if (nomA < nomB) {
-            return -1
-        }
-        if (nomA > nomB) {
             return 1
         }
 
