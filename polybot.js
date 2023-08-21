@@ -1,7 +1,7 @@
 require('dotenv').config()
 const cron = require('cron')
 const fs = require("fs")
-const { Client, GatewayIntentBits, SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js')
+const { Client, PermissionsBitField, GatewayIntentBits, SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js')
 
 const client = new Client({
     intents: [
@@ -133,7 +133,7 @@ client.on("interactionCreate", async (interaction) => {
             }
 
             case "carnet": {
-                if (!interaction.member.roles.cache.has(config.roles.delegue)) break
+                if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator)) break
                 switch (interaction.options.getSubcommand("commande")) {
                     case "trigger": {
                         await interaction.reply(":white_check_mark: Carnet de suivis envoyé !")
@@ -142,12 +142,14 @@ client.on("interactionCreate", async (interaction) => {
                     }
                     case "toggle": {
                         if (carnet.toggle) {
-                            carnet.toggle = false
                             await interaction.reply(":white_check_mark: Carnet de suivis désactivé !")
                         } else {
-                            carnet.toggle = true
                             await interaction.reply(":white_check_mark: Carnet de suivis activé !")
                         }
+                        carnet.toggle = !carnet.toggle
+                        fs.writeFile("./dat/carnet.json", JSON.stringify(carnet, null, 2), (err) => {
+                            if (err) console.log(err)
+                        })
 
 
                         break
