@@ -276,6 +276,23 @@ client.on("interactionCreate", async (interaction) => {
     }
 })
 
+   
+function getDateWeek(date) {
+    const currentDate = 
+        (typeof date === 'object') ? date : new Date();
+    const januaryFirst = 
+        new Date(currentDate.getFullYear(), 0, 1);
+    const daysToNextMonday = 
+        (januaryFirst.getDay() === 1) ? 0 : 
+        (7 - januaryFirst.getDay()) % 7;
+    const nextMonday = 
+        new Date(currentDate.getFullYear(), 0, 
+        januaryFirst.getDate() + daysToNextMonday);
+ 
+    return (currentDate < nextMonday) ? 52 : 
+    (currentDate > nextMonday ? Math.ceil(
+    (currentDate - nextMonday) / (24 * 3600 * 1000) / 7) : 1);
+}
 
 async function envoiCarnetdeSuivis(dateInput, force) {
     console.log("Carnet de suivis")
@@ -322,18 +339,15 @@ async function envoiCarnetdeSuivis(dateInput, force) {
 
     let dateStr
     if (!dateInput) {
-        // get date 
-        const date = new Date()
-        dateStr = date.getDate() + "/" + (date.getMonth() + 1) + "/" + date.getFullYear()
-        // const dateStr = "10/10/2022"
+        dateStr = "W"+getDateWeek()
     } else {
-        dateStr = dateInput
+        dateStr = "W"+getDateWeek(dateInput)
     }
 
     const carnetEmbed = new EmbedBuilder()
         .setColor(config.colors.waitingcolor)
         .setDescription(`<@${eleve}> doit compléter le carnet de suivi`)
-        .addFields({ name: "Carnet de la semaine du ", value: dateStr })
+        .addFields({ name: "Carnet de la semaine de la semaine ", value: dateStr })
 
     const buttons = new ActionRowBuilder()
         .addComponents(
